@@ -6,7 +6,7 @@ export default function Home() {
 
       {/* Header */}
       <div className="bg-white border-b px-8 py-5">
-        <h1 className="text-2xl font-bold text-indigo-600">🛍️ The PokePlumber   My Marketplace</h1>
+        <h1 className="text-2xl font-bold text-indigo-600">🛍️ The PokePlumber Marketplace</h1>
       </div>
 
       {/* Hero */}
