@@ -1,3 +1,4 @@
+import Header from "@/components/Header"
 import { getProducts } from "@/lib/api"
 
 export default async function ProductsPage() {
@@ -6,10 +7,7 @@ export default async function ProductsPage() {
   return (
     <main className="min-h-screen bg-gray-50">
 
-      {/* Header */}
-      <div className="bg-white border-b px-8 py-5">
-        <h1 className="text-2xl font-bold text-indigo-600">🛍️ My Marketplace</h1>
-      </div>
+     <Header />
 
       {/* Products */}
       <div className="max-w-5xl mx-auto px-8 py-10">

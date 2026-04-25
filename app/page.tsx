@@ -1,13 +1,11 @@
 import Link from "next/link"
-
+import Header from "@/components/Header"
 export default function Home() {
   return (
     <main className="min-h-screen bg-gray-50">
 
       {/* Header */}
-      <div className="bg-white border-b px-8 py-5">
-        <h1 className="text-2xl font-bold text-indigo-600">🛍️ The PokePlumber Marketplace</h1>
-      </div>
+
 
       {/* Hero */}
       <div className="max-w-5xl mx-auto px-8 py-20 text-center">
