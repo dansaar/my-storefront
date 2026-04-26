@@ -15,12 +15,20 @@ export default function Home() {
         <p className="text-xl text-gray-500 mb-10">
           Discover unique products from sellers around the world
         </p>
-        <Link
-          href="/products"
-          className="bg-indigo-600 text-white text-lg px-8 py-4 rounded-xl hover:bg-indigo-700 transition inline-block"
-        >
-          Browse Products →
-        </Link>
+        <div className="flex gap-4 justify-center">
+  <Link
+    href="/products"
+    className="bg-indigo-600 text-white text-lg px-8 py-4 rounded-xl hover:bg-indigo-700 transition inline-block"
+  >
+    Browse Products →
+  </Link>
+  <Link
+    href="/auctions"
+    className="bg-red-500 text-white text-lg px-8 py-4 rounded-xl hover:bg-red-600 transition inline-block"
+  >
+    Browse Auctions →
+  </Link>
+</div>
       </div>
 
     </main>
