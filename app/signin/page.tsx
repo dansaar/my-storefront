@@ -1,6 +1,6 @@
 "use client"
 import { useState } from "react"
-import { signIn } from "aws-amplify/auth"
+import { signIn, getCurrentUser } from "aws-amplify/auth"
 import { useRouter } from "next/navigation"
 
 export default function SignInPage() {
@@ -8,14 +8,35 @@ export default function SignInPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
+  const [loading, setLoading] = useState(false)
 
   const handleSignIn = async () => {
+    setLoading(true)
     try {
       await signIn({ username: email, password })
-      router.push("/products")
     } catch (e: any) {
       setError(e.message)
+      setLoading(false)
+      return
     }
+
+    try {
+      const { userId, signInDetails } = await getCurrentUser()
+      await fetch(`/api/sync-user`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: userId,
+          email: signInDetails?.loginId,
+          name: signInDetails?.loginId?.split("@")[0]
+        })
+      })
+    } catch (e) {
+      console.error("Sync failed:", e)
+    }
+
+    setLoading(false)
+    router.push("/products")
   }
 
   return (
@@ -39,9 +60,10 @@ export default function SignInPage() {
         />
         <button
           onClick={handleSignIn}
-          className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition font-medium"
+          disabled={loading}
+          className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition font-medium disabled:opacity-50"
         >
-          Sign in
+          {loading ? "Signing in..." : "Sign in"}
         </button>
         <p className="text-sm text-center text-gray-500 mt-4">
           No account?{" "}
