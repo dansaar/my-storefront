@@ -5,6 +5,7 @@ import Header from "@/components/Header"
 import { useParams } from "next/navigation"
 
 export default function LiveAuctionPage() {
+  console.log('LiveAuctionPage rendering')
   const { id } = useParams()
   const [auction, setAuction] = useState<any>(null)
   const [bids, setBids] = useState<any[]>([])
@@ -15,11 +16,19 @@ export default function LiveAuctionPage() {
   const ws = useRef<WebSocket | null>(null)
 
   useEffect(() => {
+    console.log('useEffect fired, id:', id)
+    if (!id) return
     getCurrentUser().then(setUser).catch(() => setUser(null))
     fetchAuction()
-    connectWebSocket()
-    return () => ws.current?.close()
-  }, [])
+    const timer = setTimeout(() => connectWebSocket(), 100)
+    const interval = setInterval(fetchAuction, 10000)
+    return () => {
+      clearTimeout(timer)
+      ws.current?.close()
+      ws.current = null
+      clearInterval(interval)
+    }
+  }, [id])
 
   const fetchAuction = async () => {
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auctions/${id}`)
@@ -29,13 +38,29 @@ export default function LiveAuctionPage() {
   }
 
   const connectWebSocket = () => {
+    console.log('connectWebSocket called, ws state:', ws.current?.readyState)
+    if (ws.current && (ws.current.readyState === WebSocket.OPEN || ws.current.readyState === WebSocket.CONNECTING)) {
+      console.log('Already connected, skipping')
+      return
+    }
+    console.log('Connecting WebSocket with:', {
+      wsUrl: process.env.NEXT_PUBLIC_WS_URL,
+      auctionId: id
+    })
     const socket = new WebSocket(
       `${process.env.NEXT_PUBLIC_WS_URL}?auctionId=${id}`
     )
-
-    socket.onopen = () => setConnected(true)
-    socket.onclose = () => setConnected(false)
-
+    socket.onopen = () => {
+      console.log('WebSocket connected!')
+      setConnected(true)
+    }
+    socket.onclose = () => {
+      console.log('WebSocket disconnected!')
+      setConnected(false)
+    }
+    socket.onerror = (err) => {
+      console.log('WebSocket error:', err)
+    }
     socket.onmessage = (event) => {
       const data = JSON.parse(event.data)
       if (data.type === 'newBid') {
@@ -46,41 +71,37 @@ export default function LiveAuctionPage() {
           created_at: data.timestamp
         }, ...prev])
         setAuction((prev: any) => prev ? { ...prev, current_price: data.amount } : prev)
+        setMessage(`✅ New bid: $${data.amount} by ${data.bidderName}`)
       }
       if (data.type === 'error') {
         setMessage(`❌ ${data.message}`)
       }
     }
-
     ws.current = socket
   }
 
-  const placeBid = async () => {
-  if (!user) {
-    setMessage("Please sign in to place a bid")
-    return
+  const placeBid = () => {
+    if (!user) {
+      setMessage("Please sign in to place a bid")
+      return
+    }
+    if (!ws.current || ws.current.readyState !== WebSocket.OPEN) {
+      setMessage("❌ Not connected — please refresh")
+      return
+    }
+    ws.current.send(JSON.stringify({
+      action: "sendBid",
+      auctionId: id,
+      amount: parseFloat(amount),
+      bidderId: user.userId,
+      bidderName: user.signInDetails?.loginId?.split("@")[0] || "Bidder"
+    }))
+    setMessage("⏳ Placing bid...")
+    setAmount("")
+    setTimeout(() => {
+      setMessage(prev => prev === "⏳ Placing bid..." ? "" : prev)
+    }, 3000)
   }
-  if (!ws.current || ws.current.readyState !== WebSocket.OPEN) {
-    setMessage("❌ Not connected — please refresh")
-    return
-  }
-
-  ws.current.send(JSON.stringify({
-    action: "sendBid",
-    auctionId: id,
-    amount: parseFloat(amount),
-    bidderId: user.userId,
-    bidderName: user.signInDetails?.loginId?.split("@")[0] || "Bidder"
-  }))
-
-  setMessage("⏳ Placing bid...")
-  setAmount("")
-
-  // Clear placing message after 3 seconds if no response
-  setTimeout(() => {
-    setMessage(prev => prev === "⏳ Placing bid..." ? "" : prev)
-  }, 3000)
-}
 
   const timeLeft = () => {
     if (!auction) return ""
@@ -106,33 +127,24 @@ export default function LiveAuctionPage() {
     <main className="min-h-screen bg-gray-50">
       <Header />
       <div className="max-w-3xl mx-auto px-8 py-10">
-
-        {/* Back link */}
         <a href="/auctions" className="text-indigo-600 text-sm mb-6 inline-block hover:underline">
           ← Back to auctions
         </a>
-
-        {/* Live badge + status */}
         <div className="flex items-center gap-3 mb-4">
           <span className="bg-red-100 text-red-600 text-xs font-semibold px-3 py-1 rounded-full animate-pulse">
             🔴 LIVE
           </span>
           <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-            connected
-              ? 'bg-green-100 text-green-600'
-              : 'bg-gray-100 text-gray-500'
+            connected ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'
           }`}>
             {connected ? '● Connected' : '○ Connecting...'}
           </span>
           <span className="text-sm text-orange-500 font-medium">⏱ {timeLeft()}</span>
         </div>
-
-        {/* Auction info */}
         <div className="bg-white border border-gray-200 rounded-2xl p-8 mb-6">
           <h1 className="text-3xl font-bold text-gray-800 mb-2">{auction.title}</h1>
           <p className="text-gray-500 mb-6">{auction.description}</p>
           <p className="text-gray-400 text-sm mb-6">Listed by {auction.seller_name}</p>
-
           <div className="flex justify-between items-center border-t pt-6">
             <div>
               <p className="text-sm text-gray-400">Starting price</p>
@@ -144,8 +156,6 @@ export default function LiveAuctionPage() {
             </div>
           </div>
         </div>
-
-        {/* Place bid */}
         <div className="bg-white border border-gray-200 rounded-2xl p-8 mb-6">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">Place a bid</h2>
           {message && (
@@ -181,8 +191,6 @@ export default function LiveAuctionPage() {
             </p>
           )}
         </div>
-
-        {/* Live bid feed */}
         <div className="bg-white border border-gray-200 rounded-2xl p-8">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">
             Live bid feed ({bids.length})
@@ -215,7 +223,6 @@ export default function LiveAuctionPage() {
             </div>
           )}
         </div>
-
       </div>
     </main>
   )

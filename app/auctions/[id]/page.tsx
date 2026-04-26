@@ -14,9 +14,13 @@ export default function AuctionPage() {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    getCurrentUser().then(setUser).catch(() => setUser(null))
-    fetchAuction()
-  }, [])
+  getCurrentUser().then(setUser).catch(() => setUser(null))
+  fetchAuction()
+
+  // Poll every 5 seconds for new bids
+  const interval = setInterval(fetchAuction, 5000)
+  return () => clearInterval(interval)
+}, [])
 
   const fetchAuction = async () => {
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auctions/${id}`)

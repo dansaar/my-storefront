@@ -17,7 +17,7 @@ export const handler = async (event) => {
   const domainName = event.requestContext.domainName
   const stage = event.requestContext.stage
 
-  // $connect — save connection
+  // $connect
   if (routeKey === '$connect') {
     const auctionId = event.queryStringParameters?.auctionId
     await dynamo.send(new PutCommand({
@@ -27,16 +27,23 @@ export const handler = async (event) => {
     return { statusCode: 200 }
   }
 
-  // $disconnect — remove connection
+  // $disconnect
   if (routeKey === '$disconnect') {
-    await dynamo.send(new DeleteCommand({
+    const { Items } = await dynamo.send(new ScanCommand({
       TableName: 'auction-connections',
-      Key: { connectionId, auctionId: 'none' }
+      FilterExpression: 'connectionId = :cid',
+      ExpressionAttributeValues: { ':cid': connectionId }
     }))
+    if (Items && Items.length > 0) {
+      await dynamo.send(new DeleteCommand({
+        TableName: 'auction-connections',
+        Key: { connectionId, auctionId: Items[0].auctionId }
+      }))
+    }
     return { statusCode: 200 }
   }
 
-  // sendBid — save bid and broadcast to all connections
+  // sendBid
   if (routeKey === 'sendBid') {
     const body = JSON.parse(event.body)
     const { auctionId, amount, bidderId, bidderName } = body
@@ -74,6 +81,9 @@ export const handler = async (event) => {
         ExpressionAttributeValues: { ':aid': auctionId }
       }))
 
+      console.log('Broadcasting to auctionId:', auctionId)
+      console.log('Connections found:', connections?.length)
+
       const apigw = new ApiGatewayManagementApiClient({
         endpoint: `https://${domainName}/${stage}`
       })
@@ -87,12 +97,20 @@ export const handler = async (event) => {
       })
 
       await Promise.allSettled(
-        (connections || []).map(conn =>
-          apigw.send(new PostToConnectionCommand({
-            ConnectionId: conn.connectionId,
-            Data: message
-          }))
-        )
+        (connections || []).map(async conn => {
+          try {
+            await apigw.send(new PostToConnectionCommand({
+              ConnectionId: conn.connectionId,
+              Data: message
+            }))
+          } catch (err) {
+            console.log(`Removing stale connection: ${conn.connectionId}`)
+            await dynamo.send(new DeleteCommand({
+              TableName: 'auction-connections',
+              Key: { connectionId: conn.connectionId, auctionId: conn.auctionId }
+            }))
+          }
+        })
       )
     } finally {
       await db.end()

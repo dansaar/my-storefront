@@ -1,13 +1,7 @@
+"use client"
+import { useEffect, useState } from "react"
 import Header from "@/components/Header"
 import Link from "next/link"
-
-async function getAuctions() {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auctions`, {
-    next: { revalidate: 30 }
-  })
-  const data = await res.json()
-  return data.auctions
-}
 
 function TimeLeft({ endTime }: { endTime: string }) {
   const end = new Date(endTime)
@@ -21,8 +15,20 @@ function TimeLeft({ endTime }: { endTime: string }) {
   return <span className="text-orange-500 text-sm font-medium">⏱ {hours}h {mins}m left</span>
 }
 
-export default async function AuctionsPage() {
-  const auctions = await getAuctions()
+export default function AuctionsPage() {
+  const [auctions, setAuctions] = useState<any[]>([])
+
+  const fetchAuctions = async () => {
+    const res = await fetch(`/api/auctions`)
+    const data = await res.json()
+    setAuctions(data.auctions || [])
+  }
+
+  useEffect(() => {
+    fetchAuctions()
+    const interval = setInterval(fetchAuctions, 5000)
+    return () => clearInterval(interval)
+  }, [])
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -45,7 +51,7 @@ export default async function AuctionsPage() {
 
         <div className="grid grid-cols-1 gap-6">
           {auctions.map((auction: any) => (
-            <Link href={`/auctions/${auction.id}`} key={auction.id}>
+            <Link href={auction.type === 'live' ? `/auctions/live/${auction.id}` : `/auctions/${auction.id}`} key={auction.id}>
               <div className="bg-white border border-gray-200 rounded-2xl p-6 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer">
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
