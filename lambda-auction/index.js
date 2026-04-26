@@ -114,6 +114,79 @@ export const handler = async (event) => {
         body: JSON.stringify({ success: true })
       }
     }
+    // GET /users
+if (method === 'GET' && path === '/users') {
+  const { rows } = await client.query(`
+    SELECT id, email, name, role, created_at
+    FROM users ORDER BY created_at DESC
+  `)
+  return {
+    statusCode: 200,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ users: rows })
+  }
+}
+
+// PUT /users/{id}/role
+if (method === 'PUT' && path.match(/\/users\/[\w-]+\/role$/)) {
+  const id = path.split('/')[2]
+  const body = JSON.parse(event.body)
+  const { role } = body
+  await client.query(`UPDATE users SET role = $1 WHERE id = $2`, [role, id])
+  return {
+    statusCode: 200,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ success: true })
+  }
+}
+
+// GET /products/db
+if (method === 'GET' && path === '/products/db') {
+  const { rows } = await client.query(`
+    SELECT p.*, u.name as seller_name
+    FROM products p
+    JOIN users u ON p.seller_id = u.id
+    WHERE p.status = 'active'
+    ORDER BY p.created_at DESC
+  `)
+  return {
+    statusCode: 200,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ products: rows })
+  }
+}
+
+// POST /products/create
+if (method === 'POST' && path === '/products/create') {
+  const body = JSON.parse(event.body)
+  const { name, description, price, seller_id } = body
+  const { rows } = await client.query(`
+    INSERT INTO products (name, description, price, seller_id)
+    VALUES ($1, $2, $3, $4)
+    RETURNING *
+  `, [name, description, price, seller_id])
+  return {
+    statusCode: 201,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ product: rows[0] })
+  }
+}
+
+// POST /auctions/create
+if (method === 'POST' && path === '/auctions/create') {
+  const body = JSON.parse(event.body)
+  const { title, description, starting_price, reserve_price, type, end_time, seller_id } = body
+  const { rows } = await client.query(`
+    INSERT INTO auctions (title, description, starting_price, reserve_price, current_price, type, end_time, seller_id)
+    VALUES ($1, $2, $3, $4, $3, $5, $6, $7)
+    RETURNING *
+  `, [title, description, starting_price, reserve_price, type, end_time, seller_id])
+  return {
+    statusCode: 201,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ auction: rows[0] })
+  }
+}
 
     return { statusCode: 404, body: JSON.stringify({ error: 'Route not found' }) }
 

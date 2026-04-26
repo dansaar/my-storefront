@@ -24,12 +24,17 @@ export default function Header() {
         🛍️ My Marketplace
       </Link>
       <nav className="flex gap-4 items-center">
-        <Link href="/products" className="text-gray-600 hover:text-indigo-600 text-sm">
-          Products
-        </Link>
-        <Link href="/auctions" className="text-gray-600 hover:text-indigo-600 text-sm">
-          Auctions
-        </Link>
+  <Link href="/products" className="text-gray-600 hover:text-indigo-600 text-sm">
+    Products
+  </Link>
+  <Link href="/auctions" className="text-gray-600 hover:text-indigo-600 text-sm">
+    Auctions
+  </Link>
+  {user && (
+    <Link href="/dashboard/seller" className="text-gray-600 hover:text-indigo-600 text-sm">
+      Dashboard
+    </Link>
+  )}
         {user ? (
           <>
             <span className="text-sm text-gray-500">{user.signInDetails?.loginId}</span>

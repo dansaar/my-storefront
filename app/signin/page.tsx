@@ -36,7 +36,7 @@ export default function SignInPage() {
     }
 
     setLoading(false)
-    router.push("/products")
+    router.push("/")
   }
 
   return (
