@@ -61,7 +61,15 @@ export default function AuctionsPage() {
                           ? 'bg-red-100 text-red-600'
                           : 'bg-blue-100 text-blue-600'
                       }`}>
-                        {auction.type === 'live' ? '🔴 LIVE' : '⏱ TIMED'}
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+  auction.status === 'ended'
+    ? 'bg-gray-100 text-gray-500'
+    : auction.type === 'live'
+    ? 'bg-red-100 text-red-600'
+    : 'bg-blue-100 text-blue-600'
+}`}>
+  {auction.status === 'ended' ? '🏁 ENDED' : auction.type === 'live' ? '🔴 LIVE' : '⏱ TIMED'}
+</span>
                       </span>
                       <TimeLeft endTime={auction.end_time} />
                     </div>

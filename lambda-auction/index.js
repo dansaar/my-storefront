@@ -28,9 +28,25 @@ export const handler = async (event) => {
         body: JSON.stringify({ auctions: rows })
       }
     }
+// GET /auctions/all — list all auctions including ended
+if (method === 'GET' && path === '/auctions/all') {
+  const { rows } = await client.query(`
+    SELECT a.*, u.name as seller_name,
+      w.name as winner_name, w.email as winner_email
+    FROM auctions a
+    JOIN users u ON a.seller_id = u.id
+    LEFT JOIN users w ON a.winner_id = w.id
+    ORDER BY a.end_time DESC
+  `)
+  return {
+    statusCode: 200,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ auctions: rows })
+  }
+}
 
-    // GET /auctions/{id}
-    if (method === 'GET' && path.match(/\/auctions\/[\w-]+$/)) {
+// GET /auctions/{id} — get single auction with bids
+if (method === 'GET' && path.match(/\/auctions\/[\w-]+$/)) {
       const id = path.split('/')[2]
       const { rows: auction } = await client.query(
         `SELECT a.*, u.name as seller_name
@@ -187,6 +203,7 @@ if (method === 'POST' && path === '/auctions/create') {
     body: JSON.stringify({ auction: rows[0] })
   }
 }
+
 
     return { statusCode: 404, body: JSON.stringify({ error: 'Route not found' }) }
 
